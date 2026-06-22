@@ -1,3 +1,9 @@
+import os
+import sys
+
+# Ensure backend directory is in the Python path for resolving imports
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
