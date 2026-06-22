@@ -79,7 +79,9 @@ class StoryGenerator:
             is_mock = True
 
         if is_mock:
+            print("[TEMP LOG] OpenAI request start (MOCKED)", flush=True)
             story_structure = cls._generate_mock_story_data(theme)
+            print("[TEMP LOG] OpenAI request end (MOCKED)", flush=True)
         else:
             try:
                 llm = cls._get_llm()
@@ -96,7 +98,9 @@ class StoryGenerator:
                     )
                 ]).partial(format_instructions=story_parser.get_format_instructions())
 
+                print("[TEMP LOG] OpenAI request start", flush=True)
                 raw_response = llm.invoke(prompt.invoke({}))
+                print("[TEMP LOG] OpenAI request end", flush=True)
 
                 response_text = raw_response
                 if hasattr(raw_response, "content"):
@@ -104,8 +108,10 @@ class StoryGenerator:
 
                 story_structure = story_parser.parse(response_text)
             except Exception as e:
-                print(f"OpenAI generation failed, falling back to mock data: {e}")
+                print(f"[TEMP LOG] OpenAI generation failed, falling back to mock data: {e}", flush=True)
+                print("[TEMP LOG] OpenAI request start (MOCKED FALLBACK)", flush=True)
                 story_structure = cls._generate_mock_story_data(theme)
+                print("[TEMP LOG] OpenAI request end (MOCKED FALLBACK)", flush=True)
 
         story_db = Story(title=story_structure.title, session_id=session_id)
         db.add(story_db)

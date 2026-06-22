@@ -1,37 +1,14 @@
-import {useState, useEffect} from 'react';
+import {useState} from 'react';
 
 function StoryGame({story, onNewStory}) {
-    const [currentNodeId, setCurrentNodeId] = useState(null);
-    const [currentNode, setCurrentNode] = useState(null)
-    const [options, setOptions] = useState([])
-    const [isEnding, setIsEnding] = useState(false)
-    const [isWinningEnding, setIsWinningEnding] = useState(false)
-    const [history, setHistory] = useState([])
+    const rootNodeId = story?.root_node?.id || null;
+    const [currentNodeId, setCurrentNodeId] = useState(rootNodeId);
+    const [history, setHistory] = useState([{ id: rootNodeId, label: "Start" }]);
 
-    useEffect(() => {
-        if (story && story.root_node) {
-            const rootNodeId = story.root_node.id
-            setCurrentNodeId(rootNodeId)
-            setHistory([{ id: rootNodeId, label: "Start" }])
-        }
-    }, [story])
-
-    useEffect(() => {
-        if (currentNodeId && story && story.all_nodes) {
-            const node = story.all_nodes[currentNodeId]
-
-            setCurrentNode(node)
-            setIsEnding(node.is_ending)
-            setIsWinningEnding(node.is_winning_ending)
-
-            if (!node.is_ending && node.options && node.options.length > 0) {
-                setOptions(node.options)
-            } else {
-                setOptions([])
-            }
-        }
-    }, [currentNodeId, story])
-
+    const currentNode = story?.all_nodes?.[currentNodeId] || null;
+    const isEnding = currentNode?.is_ending || false;
+    const isWinningEnding = currentNode?.is_winning_ending || false;
+    const options = (!isEnding && currentNode?.options) ? currentNode.options : [];
 
     const chooseOption = (optionId, optionText) => {
         setCurrentNodeId(optionId)
@@ -45,10 +22,8 @@ function StoryGame({story, onNewStory}) {
     }
 
     const restartStory = () => {
-        if (story && story.root_node) {
-            setCurrentNodeId(story.root_node.id)
-            setHistory([{ id: story.root_node.id, label: "Start" }])
-        }
+        setCurrentNodeId(rootNodeId)
+        setHistory([{ id: rootNodeId, label: "Start" }])
     }
 
     return <div className="story-game">

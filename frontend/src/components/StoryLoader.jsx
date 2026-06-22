@@ -13,28 +13,46 @@ function StoryLoader() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null);
 
-    useEffect(() => {
-        loadStory(id)
-    }, [id])
-
-    const loadStory = async (storyId) => {
-        setLoading(true)
-        setError(null)
-
-        try {
-            const response = await axios.get(`${API_BASE_URL}/stories/${storyId}/complete`)
-            setStory(response.data)
-            setLoading(false)
-        } catch (err) {
-            if (err.response?.status === 404) {
-                setError("Story is not found.")
-            } else {
-                setError("Failed to load story")
-            }
-        } finally {
-            setLoading(false)
-        }
+    const [prevId, setPrevId] = useState(id);
+    if (id !== prevId) {
+        setPrevId(id);
+        setStory(null);
+        setLoading(true);
+        setError(null);
     }
+
+    useEffect(() => {
+        let active = true;
+        const requestUrl = `${API_BASE_URL}/stories/${id}/complete`;
+        console.log(`[TEMP LOG] Frontend API request: GET ${requestUrl}`, { story_id: id });
+        axios.get(requestUrl)
+            .then(response => {
+                console.log(`[TEMP LOG] Frontend API response status: ${response.status} for GET ${requestUrl}`);
+                console.log(`[TEMP LOG] Frontend API response body:`, response.data);
+                if (active) {
+                    setStory(response.data);
+                    setLoading(false);
+                }
+            })
+            .catch(err => {
+                console.error(`[TEMP LOG] Frontend caught exception in get_complete_story GET ${requestUrl}:`, err);
+                if (err.response) {
+                    console.log(`[TEMP LOG] Frontend API response status (error): ${err.response.status}`);
+                    console.log(`[TEMP LOG] Frontend API response body (error):`, err.response.data);
+                }
+                if (active) {
+                    if (err.response?.status === 404) {
+                        setError("Story is not found.");
+                    } else {
+                        setError("Failed to load story");
+                    }
+                    setLoading(false);
+                }
+            });
+        return () => {
+            active = false;
+        };
+    }, [id]);
 
     const createNewStory = () => {
         navigate("/")
@@ -56,7 +74,7 @@ function StoryLoader() {
 
     if (story) {
         return <div className="story-loader">
-            <StoryGame story={story} onNewStory={createNewStory} />
+            <StoryGame key={story.id} story={story} onNewStory={createNewStory} />
         </div>
     }
 }

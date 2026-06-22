@@ -7,7 +7,15 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+import os
 from core.config import settings
+print(f"[DEBUG MAIN] Current working directory: {os.getcwd()}", flush=True)
+print(f"[DEBUG MAIN] DATABASE_URL: {settings.DATABASE_URL}", flush=True)
+if settings.DATABASE_URL.startswith("sqlite:///"):
+    db_rel_path = settings.DATABASE_URL.replace("sqlite:///", "")
+    print(f"[DEBUG MAIN] Absolute database path: {os.path.abspath(db_rel_path)}", flush=True)
+    print(f"[DEBUG MAIN] Database file exists: {os.path.exists(db_rel_path)}", flush=True)
+
 from routers import story, job
 from db.database import create_tables
 

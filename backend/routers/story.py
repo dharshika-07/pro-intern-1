@@ -34,34 +34,58 @@ def create_story(
          session_id: str = Depends(get_session_id),
          db: Session = Depends(get_db)
 ):
-    response.set_cookie(key="session_id", value=session_id, httponly=True)
-
-    job_id = str(uuid.uuid4())
-
-    job = StoryJob(
-        job_id=job_id,
-        session_id=session_id,
-        theme=request.theme,
-        status="pending",
-    )  
-    db.add(job)
-    db.commit()
-
-    background_tasks.add_task(
-        generate_story_task,
-        job_id=job_id,
-        theme=request.theme,
-        session_id=session_id
-    )
-    return job
-
-def generate_story_task(job_id: str, theme: str, session_id: str):
-    db = SessionLocal()
+    import os
+    import traceback
+    from db.database import engine
+    
+    print(f"[TEMP LOG] POST /api/stories/create - Request URL: /api/stories/create", flush=True)
+    print(f"[TEMP LOG] POST /api/stories/create - Request payload: theme={request.theme}", flush=True)
+    print(f"[TEMP LOG] POST /api/stories/create - Current working directory: {os.getcwd()}", flush=True)
+    print(f"[TEMP LOG] POST /api/stories/create - Absolute SQLite database path: {os.path.abspath(str(engine.url.database)) if engine.url.database else 'None'}", flush=True)
 
     try:
-        job =db.query(StoryJob).filter (StoryJob.job_id == job_id).first()
+        response.set_cookie(key="session_id", value=session_id, httponly=True)
+        job_id = str(uuid.uuid4())
+        print(f"[TEMP LOG] POST /api/stories/create - Generated job_id: {job_id}", flush=True)
 
+        job = StoryJob(
+            job_id=job_id,
+            session_id=session_id,
+            theme=request.theme,
+            status="pending",
+        )  
+        db.add(job)
+        db.commit()
+
+        background_tasks.add_task(
+            generate_story_task,
+            job_id=job_id,
+            theme=request.theme,
+            session_id=session_id
+        )
+        print(f"[TEMP LOG] POST /api/stories/create - Response status: 200", flush=True)
+        print(f"[TEMP LOG] POST /api/stories/create - Response body: job_id={job.job_id}, status={job.status}, story_id={job.story_id}", flush=True)
+        return job
+    except Exception as e:
+        print(f"[TEMP LOG] POST /api/stories/create - Exception: {e}", flush=True)
+        traceback.print_exc()
+        raise e
+
+def generate_story_task(job_id: str, theme: str, session_id: str):
+    import os
+    import traceback
+    from db.database import engine, SessionLocal
+    
+    print(f"[TEMP LOG] generate_story_task - Task started", flush=True)
+    print(f"[TEMP LOG] generate_story_task - job_id: {job_id}", flush=True)
+    print(f"[TEMP LOG] generate_story_task - Current working directory: {os.getcwd()}", flush=True)
+    print(f"[TEMP LOG] generate_story_task - Absolute SQLite database path: {os.path.abspath(str(engine.url.database)) if engine.url.database else 'None'}", flush=True)
+    
+    db = SessionLocal()
+    try:
+        job = db.query(StoryJob).filter(StoryJob.job_id == job_id).first()
         if not job:
+            print(f"[TEMP LOG] generate_story_task - Job {job_id} not found in database!", flush=True)
             return
         
         try:
@@ -69,28 +93,53 @@ def generate_story_task(job_id: str, theme: str, session_id: str):
             db.commit()
 
             story = StoryGenerator.generate_story(db, session_id, theme)
-
+            
             job.story_id = story.id
-            job.status ="completed"
-            job.completed_at =datetime.now()
+            job.status = "completed"
+            job.completed_at = datetime.now()
             db.commit()
+            
+            print(f"[TEMP LOG] generate_story_task - story_id: {story.id}", flush=True)
         except Exception as e: 
-            job.status ="failed"
+            print(f"[TEMP LOG] generate_story_task - Exception: {e}", flush=True)
+            traceback.print_exc()
+            job.status = "failed"
             job.completed_at = datetime.now()
             job.error = str(e)
             db.commit()
     finally:
         db.close()       
-                
-            
+                 
+             
 @router.get(path="/{story_id}/complete", response_model= CompleteStoryResponse)
 def get_complete_story(story_id: int, db: Session =Depends(get_db)):
-    story = db.query(Story).filter(Story.id == story_id).first()
-    if not story:
-        raise HTTPException(status_code=404, detail="Story not found")
+    import os
+    import traceback
+    from db.database import engine
     
-    complete_story = build_complete_story_tree(db, story)
-    return complete_story
+    print(f"[TEMP LOG] GET /api/stories/{story_id}/complete - Request URL: /api/stories/{story_id}/complete", flush=True)
+    print(f"[TEMP LOG] GET /api/stories/{story_id}/complete - story_id: {story_id}", flush=True)
+    print(f"[TEMP LOG] GET /api/stories/{story_id}/complete - Absolute SQLite database path: {os.path.abspath(str(engine.url.database)) if engine.url.database else 'None'}", flush=True)
+    
+    try:
+        story = db.query(Story).filter(Story.id == story_id).first()
+        story_exists = story is not None
+        print(f"[TEMP LOG] GET /api/stories/{story_id}/complete - Whether the story exists: {story_exists}", flush=True)
+        
+        if not story:
+            print(f"[TEMP LOG] GET /api/stories/{story_id}/complete - Response status: 404", flush=True)
+            print(f"[TEMP LOG] GET /api/stories/{story_id}/complete - Response body: Story not found", flush=True)
+            raise HTTPException(status_code=404, detail="Story not found")
+        
+        complete_story = build_complete_story_tree(db, story)
+        print(f"[TEMP LOG] GET /api/stories/{story_id}/complete - Response status: 200", flush=True)
+        print(f"[TEMP LOG] GET /api/stories/{story_id}/complete - Response body: story_id={complete_story.id}, title={complete_story.title}", flush=True)
+        return complete_story
+    except Exception as e:
+        print(f"[TEMP LOG] GET /api/stories/{story_id}/complete - Exception: {e}", flush=True)
+        if not isinstance(e, HTTPException):
+            traceback.print_exc()
+        raise e
 
 
 def build_complete_story_tree(db: Session, story: Story) -> CompleteStoryResponse:

@@ -1,0 +1,5 @@
+[tool.pyrefly]
+search-path = [
+    "backend"
+]
+python_interpreter = "backend/.venv/Scripts/python.exe"
